@@ -23,13 +23,17 @@ class TwitchAPI:
     def __init__(self, token, streamer, headless=True, logs=True):
         self.logs = logs
         self.streamer = streamer
-        self.driver = self._initDriver(token, headless)
+        self.driver = self._init_driver(token, headless)
 
     def log(self, message):
         if self.logs:
             logging.info(message)
 
-    def _initDriver(self, token, headless=True):
+    def _init_driver(self, token, headless=True):
+        """
+        will create webdriver that is fullscrened (for reason to appear chat and points)
+        and add auth-token cookie (login)
+        """
         self.log("creating driver")
         options = Options()
         if headless:
@@ -43,15 +47,15 @@ class TwitchAPI:
         driver.get(f"https://www.twitch.tv/{self.streamer}")
         self.log("adding auth cookies")
         driver.add_cookie({"name": "auth-token", "value": f"{token}"})
-        driver.refresh()
+        driver.refresh()  # refresh to update cookie
         self.log("driver created succesfully")
         return driver
 
-    def isStreamerOnline(self):
+    def is_streamer_online(self):
         """
         will return True when stream is online if is not then return False
         """
-        self.refreshAndAgeVer()
+        self.refresh_and_set_up_stream()
         self.log(f"checking if {self.streamer} is online")
         try:
             # Number of viewers
@@ -69,13 +73,12 @@ class TwitchAPI:
             self.log(f"streamer {self.streamer} is offline")
             return False
 
-    def getPoints(self):
+    def get_points(self):
         """
         if are points to pickup, then pick them up and return True,
         else return False
         """
         self.log("looking for point")
-        time.sleep(10)
         try:
             self.points_button = self.driver.find_element(
                 By.XPATH,
@@ -86,60 +89,68 @@ class TwitchAPI:
         except NoSuchElementException:
             self.log("no points found")
 
-    def refreshAndAgeVer(self, r=0):
+    def refresh_and_set_up_stream(self):
+        """
+        refresh stream, will click adults button and set quality for stream 160p
+        """
         self.driver.refresh()
+        # if streamer will have set stream only for adults, will click accept button
         try:
-            # Number of viewers
-            AgeButton = WebDriverWait(self.driver, 10).until(
+            WebDriverWait(self.driver, 10).until(
                 EC.presence_of_element_located(
                     (
                         By.CSS_SELECTOR,
                         'button[class="ScCoreButton-sc-ocjdkq-0 ScCoreButtonPrimary-sc-ocjdkq-1 ibtYyW eVWnXL"]',
                     )
                 )
-            )
-            AgeButton.click()
+            ).click()
             self.log("age verificitaion clicked")
         except:
             pass
-        x = 0
-        time.sleep(3)
-        while x < 3:
+        """
+        will set up video quality for 160p for consumption saving
+        
+        try 3x to set lower quality, if it will fail then will continue
+        """
+        time.sleep(3)  # let stream load
+
+        loop_count = 0
+        MAXIMUM_LOOP_NUMBER = 3
+        while loop_count < MAXIMUM_LOOP_NUMBER:
             try:
-                # setting up 180p
-                settingButton = WebDriverWait(self.driver, 10).until(
+                # will get button for setting and click it
+                WebDriverWait(self.driver, 10).until(
                     EC.presence_of_element_located(
                         (
                             By.XPATH,
                             "/html/body/div[1]/div[1]/div[2]/div[2]/main/div[1]/div[3]/div/div/div[2]/div/div[2]/div/div[1]/div/div/div[6]/div/section/div/div[2]/div[1]/div[2]/div/button",
                         )
                     )
-                )
-                settingButton.click()
+                ).click()
 
-                qualityButton = WebDriverWait(self.driver, 10).until(
+                # get quality option a nd click it
+                WebDriverWait(self.driver, 10).until(
                     EC.presence_of_element_located(
                         (
                             By.XPATH,
                             "/html/body/div[2]/div[1]/div[2]/div[2]/main/div[1]/div[3]/div/div/div[2]/div/div[2]/div/div[4]/div/div/div/div/div/div/div/div/div[3]/button",
                         )
                     )
-                )
-                qualityButton.click()
+                ).click()
 
-                finalButton = WebDriverWait(self.driver, 10).until(
+                # get 160p and click it
+                WebDriverWait(self.driver, 10).until(
                     EC.presence_of_element_located(
                         (
                             By.XPATH,
                             "/html/body/div[2]/div[1]/div[2]/div[2]/main/div[1]/div[3]/div/div/div[2]/div/div[2]/div/div[4]/div/div/div/div/div/div/div/div/div[9]/div/div/div/div",
                         )
                     )
-                )
-                finalButton.click()
+                ).click()
                 self.log("low resolution was setted")
-                x = 4
+                break
             except:
                 self.log("couldnt set lower resolutions, trying again")
-                x += 1
-                if x == 3:
+                loop_count += 1
+                if loop_count == MAXIMUM_LOOP_NUMBER:
                     self.log("cant set low resolution, skipping...")

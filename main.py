@@ -9,11 +9,11 @@ def main():
         conf = json.load(f)
     api = TwitchAPI(**conf)
     while True:
-        if not api.isStreamerOnline():
+        if not api.is_streamer_online():
             sleep(3600)
             continue
         for _ in range(12):
-            api.getPoints()
+            api.get_points()
             sleep(300)
 
 
