@@ -2,9 +2,10 @@ from twitch import TwitchAPI
 import json
 from time import sleep
 
+
 def main():
     # get settings from init json
-    with open('init.json', 'r') as f:
+    with open("init.json", "r") as f:
         conf = json.load(f)
     api = TwitchAPI(**conf)
     while True:
@@ -15,5 +16,6 @@ def main():
             api.getPoints()
             sleep(300)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()
